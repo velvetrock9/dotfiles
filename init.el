@@ -1,10 +1,6 @@
 ;; Initialize package sources
 (require 'package)
 
-;; Remap Meta to Option key
-(setq mac-option-modifier 'meta)       ; Make the Option key act as Meta
-;; (setq mac-command-modifier 'super)     ; Make the Command key act as Super
-
 (setq package-archives '(("melpa" . "https://melpa.org/packages/")
 			 ("org" . "https://orgmode.org/elpa")
 			 ("elpa" . "https://elpa.gnu.org/packages/")))
@@ -13,22 +9,17 @@
   (package-refresh-contents))
 
 ;; Initialize use-package on non-Linux platforms!!
-(unless (package-installed-p 'use-package)
-  (package-install 'use-package))
 
 (require 'use-package)
 (setq use-package-always-ensure t)
 
 ;; helps to initialize environment variables
-(when (memq window-system '(mac ns x))
-  (exec-path-from-shell-initialize)
-  (exec-path-from-shell-copy-env "GOROOT"))
 
 ;; Theme-folder
 (add-to-list 'custom-theme-load-path (expand-file-name "~/.emacs.d/themes/"))
 
 ;; Theme
-(load-theme 'basic t)
+;;(load-theme 'basic t)
 
 ;; startup frame size
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
@@ -50,7 +41,7 @@
 (blink-cursor-mode t)
 
 ;; Highlight active line
-(hl-line-mode -1)
+;;(hl-line-mode -1)
 
 ;; Recent files opening
 (recentf-mode 1)
@@ -71,7 +62,7 @@
 ;; set font size
 ;; Height values in 1/10pt, so 100 will give you 10pt, etc.
 (set-face-attribute 'default nil
-                    :font "Fira Code"
+                    :font "IBM Plex"
                     :height 180)
 
 
@@ -88,44 +79,16 @@
 
 ;; disable line numbers in some modes
 (dolist (mode '(org-mode-hook
-		eshell-mode-hook
 		shell-mode-hook
 		term-mode-hook))
   (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
-;; open new shell buffer in a split window instead of a new frame
-(defun split-window-and-start-shell ()
-  (interactive)
-  (split-window-below(round (* 0.7 (window-total-height))))
-  (other-window 1)
-  (shell (generate-new-buffer-name "*shell*")))
-
-(global-set-key (kbd "C-c s") 'split-window-and-start-shell)
-
-;; kill current buffer and close ALL windows in current frame, associated with it
-(defun kill-buffer-and-all-windows ()
-  "Kill the current buffer and all windows that display it."
-  (interactive)
-  (let ((buffer (current-buffer)))
-    (dolist (window (window-list))
-      (when (eq (window-buffer window) buffer)
-        (delete-window window)))
-    (kill-buffer buffer)))
-
-(global-set-key (kbd "C-c k") 'kill-buffer-and-all-windows)
 		
 ;; rebind keys to switch between current window frames
 (global-set-key (kbd "M-o") 'other-window)
 
 ;; save all backup files in a particular directory
 (setq backup-directory-alist `(("." . "~/.emacs.d/backups")))
-
-(require 'company)
-(require 'yasnippet)
-
-;; code completions menu reveal timing
-(setq company-idle-delay 0)
-
 
 ;; Implement vscode-like line vertical movement
 (defun move-line-up ()
@@ -136,8 +99,6 @@
   ;; keybinding
   (global-set-key (kbd "M-p") 'move-line-up)
   (global-set-key (kbd "M-<up>") 'move-line-up)
-
-
 (defun move-line-down ()
   "Move the current line down by one row."
   (interactive)
@@ -147,7 +108,6 @@
   ;; keybinding
   (global-set-key (kbd "M-n") 'move-line-down)
   (global-set-key (kbd "M-<down>") 'move-line-down)
-
 
 ;; Implement vscode-like line vertical copying
 (defun duplicate-line-up ()
@@ -161,7 +121,6 @@
   ;; keybinding
   (global-set-key (kbd "M-P") 'duplicate-line-up)
   (global-set-key (kbd "M-S-<up>") 'duplicate-line-up)
-
 (defun duplicate-line-down ()
   "Duplicate the current line below."
   (interactive)
@@ -175,16 +134,19 @@
   (global-set-key (kbd "M-N") 'duplicate-line-down)
   (global-set-key (kbd "M-S-<down>") 'duplicate-line-down)
 
-
+(use-package company)
+(use-package yasnippet)
+;; code completions menu reveal timing
+(setq company-idle-delay 0)
  
 
 ;; delete selected text
 (delete-selection-mode 1)
 
-
+;; Yes/No to y/n
 (setq use-short-answers t)
 
-
+;; Brackets, Parenthesis and Curly Braces
 (electric-pair-mode 1)
 
 
