@@ -18,11 +18,23 @@
 ;; Theme-folder
 (add-to-list 'custom-theme-load-path (expand-file-name "~/.emacs.d/themes/"))
 
-;; Theme
-;;(load-theme 'basic t)
+(load-theme 'modus-operandi t)
 
 ;; startup frame size
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
+
+;; Paste new line below the current line
+(defun paste-new-line-below ()
+  "Insert a new line below the current line and move the cursor to it."
+  (interactive)
+  (save-excursion
+    (end-of-line)
+    (newline))
+  (next-line 1))
+(global-set-key (kbd "C-c O") 'paste-new-line-below)
+
+ ;; Jump to a line with 'C-c l'
+(global-set-key (kbd "C-c l") 'goto-line) 
 
 ;; startup message
 (setq inhibit-startup-message t
@@ -41,10 +53,16 @@
 (blink-cursor-mode t)
 
 ;; Highlight active line
-;;(hl-line-mode -1)
+(hl-line-mode -1)
 
 ;; Recent files opening
 (recentf-mode 1)
+;; Optional: Set the maximum number of recent files to track
+(setq recentf-max-menu-items 25)
+;; Optional: Save recent files list periodically
+(run-at-time nil (* 5 60) 'recentf-save-list)
+;; Optional: Keybinding to open recent files quickly
+(global-set-key (kbd "C-x C-r") 'recentf-open-files)
 
 ;; Remember cursor position after file is closed
 (save-place-mode 1)
@@ -62,10 +80,12 @@
 ;; set font size
 ;; Height values in 1/10pt, so 100 will give you 10pt, etc.
 (set-face-attribute 'default nil
-                    :font "IBM Plex"
+                    :font "IBM Plex Mono"
                     :height 180)
 
-
+(use-package expand-region
+  :ensure t
+  :bind ("C-=" . er/expand-region))
 
 ;; nerd icons
 (use-package nerd-icons)
@@ -149,4 +169,17 @@
 ;; Brackets, Parenthesis and Curly Braces
 (electric-pair-mode 1)
 
+(setq completions-format 'one-column)
+(setq completions-header-format nil)
+(setq completions-max-height 20)
+(setq completion-auto-select nil)
+(define-key minibuffer-mode-map (kbd "C-n") 'minibuffer-next-completion)
+(define-key minibuffer-mode-map (kbd "C-p") 'minibuffer-previous-completion)
+(define-key completion-in-region-mode-map (kbd "C-n") 'minibuffer-next-completion)
+(define-key completion-in-region-mode-map (kbd "C-p") 'minibuffer-previous-completion)
 
+(use-package marginalia)
+(marginalia-mode t)
+
+(use-package orderless)
+(setq completion-styles '(orderless))
