@@ -15,11 +15,11 @@
 
 ;; helps to initialize environment variables
 
-;; Theme-folder
+;; Custom themes folder
 (add-to-list 'custom-theme-load-path (expand-file-name "~/.emacs.d/themes/"))
 
-(load-theme 'modus-operandi t)
-
+(use-package idea-darkula-theme)
+(load-theme 'idea-darkula t)
 ;; startup frame size
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
 
@@ -81,7 +81,7 @@
 ;; Height values in 1/10pt, so 100 will give you 10pt, etc.
 (set-face-attribute 'default nil
                     :font "IBM Plex Mono"
-                    :height 180)
+                    :height 170)
 
 (use-package expand-region
   :ensure t
@@ -183,3 +183,34 @@
 
 (use-package orderless)
 (setq completion-styles '(orderless))
+
+(setq scroll-step 1)  ; Scroll by 1 line at a time
+(setq scroll-conservatively 10000)  ; Prevent recenters while scrolling
+
+;; Geiser with Racket support
+(use-package geiser
+  :ensure t
+  :init
+  (setq geiser-active-implementations '(racket))
+  :config
+  (add-hook 'geiser-repl-mode-hook #'paredit-mode))
+
+;; Paredit for parentheses management
+(use-package paredit
+  :ensure t
+  :hook (scheme-mode . paredit-mode))
+
+;; Rainbow Delimiters for better visualization
+(use-package rainbow-delimiters
+  :ensure t
+  :hook (scheme-mode . rainbow-delimiters-mode))
+
+;; Enable Racket mode and bind keys
+(use-package racket-mode
+  :ensure t
+  :mode ("\\.rkt\\'" "\\.scm\\'")
+  :bind (:map racket-mode-map
+              ("C-c C-k" . racket-run))
+  :config
+  (add-hook 'racket-mode-hook #'paredit-mode)
+  (add-hook 'racket-mode-hook #'rainbow-delimiters-mode))
