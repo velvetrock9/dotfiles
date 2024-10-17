@@ -27,11 +27,23 @@
 ;; Theme-folder
 (add-to-list 'custom-theme-load-path (expand-file-name "~/.emacs.d/themes/"))
 
-;; Theme
-(load-theme 'basic t)
-
+(use-package idea-darkula-theme)
+(load-theme 'idea-darkula t)
 ;; startup frame size
 (add-to-list 'default-frame-alist '(fullscreen . maximized))
+
+;; Paste new line below the current line
+(defun paste-new-line-below ()
+  "Insert a new line below the current line and move the cursor to it."
+  (interactive)
+  (save-excursion
+    (end-of-line)
+    (newline))
+  (next-line 1))
+(global-set-key (kbd "C-c O") 'paste-new-line-below)
+
+ ;; Jump to a line with 'C-c l'
+(global-set-key (kbd "C-c l") 'goto-line) 
 
 ;; startup message
 (setq inhibit-startup-message t
@@ -54,6 +66,12 @@
 
 ;; Recent files opening
 (recentf-mode 1)
+;; Optional: Set the maximum number of recent files to track
+(setq recentf-max-menu-items 25)
+;; Optional: Save recent files list periodically
+(run-at-time nil (* 5 60) 'recentf-save-list)
+;; Optional: Keybinding to open recent files quickly
+(global-set-key (kbd "C-x C-r") 'recentf-open-files)
 
 ;; Remember cursor position after file is closed
 (save-place-mode 1)
@@ -71,10 +89,12 @@
 ;; set font size
 ;; Height values in 1/10pt, so 100 will give you 10pt, etc.
 (set-face-attribute 'default nil
-                    :font "Fira Code"
-                    :height 180)
+                    :font "IBM Plex Mono"
+                    :height 170)
 
-
+(use-package expand-region
+  :ensure t
+  :bind ("C-=" . er/expand-region))
 
 ;; nerd icons
 (use-package nerd-icons)
@@ -88,44 +108,16 @@
 
 ;; disable line numbers in some modes
 (dolist (mode '(org-mode-hook
-		eshell-mode-hook
 		shell-mode-hook
 		term-mode-hook))
   (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
-;; open new shell buffer in a split window instead of a new frame
-(defun split-window-and-start-shell ()
-  (interactive)
-  (split-window-below(round (* 0.7 (window-total-height))))
-  (other-window 1)
-  (shell (generate-new-buffer-name "*shell*")))
-
-(global-set-key (kbd "C-c s") 'split-window-and-start-shell)
-
-;; kill current buffer and close ALL windows in current frame, associated with it
-(defun kill-buffer-and-all-windows ()
-  "Kill the current buffer and all windows that display it."
-  (interactive)
-  (let ((buffer (current-buffer)))
-    (dolist (window (window-list))
-      (when (eq (window-buffer window) buffer)
-        (delete-window window)))
-    (kill-buffer buffer)))
-
-(global-set-key (kbd "C-c k") 'kill-buffer-and-all-windows)
 		
 ;; rebind keys to switch between current window frames
 (global-set-key (kbd "M-o") 'other-window)
 
 ;; save all backup files in a particular directory
 (setq backup-directory-alist `(("." . "~/.emacs.d/backups")))
-
-(require 'company)
-(require 'yasnippet)
-
-;; code completions menu reveal timing
-(setq company-idle-delay 0)
-
 
 ;; Implement vscode-like line vertical movement
 (defun move-line-up ()
@@ -136,8 +128,6 @@
   ;; keybinding
   (global-set-key (kbd "M-p") 'move-line-up)
   (global-set-key (kbd "M-<up>") 'move-line-up)
-
-
 (defun move-line-down ()
   "Move the current line down by one row."
   (interactive)
@@ -147,7 +137,6 @@
   ;; keybinding
   (global-set-key (kbd "M-n") 'move-line-down)
   (global-set-key (kbd "M-<down>") 'move-line-down)
-
 
 ;; Implement vscode-like line vertical copying
 (defun duplicate-line-up ()
@@ -161,7 +150,6 @@
   ;; keybinding
   (global-set-key (kbd "M-P") 'duplicate-line-up)
   (global-set-key (kbd "M-S-<up>") 'duplicate-line-up)
-
 (defun duplicate-line-down ()
   "Duplicate the current line below."
   (interactive)
@@ -175,16 +163,63 @@
   (global-set-key (kbd "M-N") 'duplicate-line-down)
   (global-set-key (kbd "M-S-<down>") 'duplicate-line-down)
 
-
+(use-package company)
+(use-package yasnippet)
+;; code completions menu reveal timing
+(setq company-idle-delay 0)
  
 
 ;; delete selected text
 (delete-selection-mode 1)
 
-
+;; Yes/No to y/n
 (setq use-short-answers t)
 
-
+;; Brackets, Parenthesis and Curly Braces
 (electric-pair-mode 1)
 
+(setq completions-format 'one-column)
+(setq completions-header-format nil)
+(setq completions-max-height 20)
+(setq completion-auto-select nil)
+(define-key minibuffer-mode-map (kbd "C-n") 'minibuffer-next-completion)
+(define-key minibuffer-mode-map (kbd "C-p") 'minibuffer-previous-completion)
+(define-key completion-in-region-mode-map (kbd "C-n") 'minibuffer-next-completion)
+(define-key completion-in-region-mode-map (kbd "C-p") 'minibuffer-previous-completion)
 
+(use-package marginalia)
+(marginalia-mode t)
+
+(use-package orderless)
+(setq completion-styles '(orderless))
+
+(setq scroll-step 1)  ; Scroll by 1 line at a time
+(setq scroll-conservatively 10000)  ; Prevent recenters while scrolling
+
+;; Geiser with Racket support
+(use-package geiser
+  :ensure t
+  :init
+  (setq geiser-active-implementations '(racket))
+  :config
+  (add-hook 'geiser-repl-mode-hook #'paredit-mode))
+
+;; Paredit for parentheses management
+(use-package paredit
+  :ensure t
+  :hook (scheme-mode . paredit-mode))
+
+;; Rainbow Delimiters for better visualization
+(use-package rainbow-delimiters
+  :ensure t
+  :hook (scheme-mode . rainbow-delimiters-mode))
+
+;; Enable Racket mode and bind keys
+(use-package racket-mode
+  :ensure t
+  :mode ("\\.rkt\\'" "\\.scm\\'")
+  :bind (:map racket-mode-map
+              ("C-c C-k" . racket-run))
+  :config
+  (add-hook 'racket-mode-hook #'paredit-mode)
+  (add-hook 'racket-mode-hook #'rainbow-delimiters-mode))
