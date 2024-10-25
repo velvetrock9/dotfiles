@@ -96,3 +96,20 @@ nnoremap ~ :nohl<CR>
 " Enable folding
 set foldmethod=indent
 set foldlevel=99
+
+command! MakeTags call s:MakeTags()
+
+" Edit vimr configuration file
+nnoremap confe :e $MYVIMRC<CR>
+" Reload vims configuration file
+nnoremap confr :source $MYVIMRC<CR>
+
+" TAG JUMPING:
+
+" Create the `tags` file (may need to install ctags first)
+command! MakeTags !ctags -R .
+
+" NOW WE CAN:
+" - Use ^] to jump to tag under cursor
+" - Use g^] for ambiguous tags
+" - Use ^t to jump back up the tag stack
