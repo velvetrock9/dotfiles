@@ -27,11 +27,6 @@
 ;; Theme-folder
 (add-to-list 'custom-theme-load-path (expand-file-name "~/.emacs.d/themes/"))
 
-(use-package idea-darkula-theme)
-(load-theme 'idea-darkula t)
-;; startup frame size
-(add-to-list 'default-frame-alist '(fullscreen . maximized))
-
 ;; Paste new line below the current line
 (defun paste-new-line-below ()
   "Insert a new line below the current line and move the cursor to it."
@@ -90,7 +85,7 @@
 ;; Height values in 1/10pt, so 100 will give you 10pt, etc.
 (set-face-attribute 'default nil
                     :font "IBM Plex Mono"
-                    :height 170)
+                    :height 160)
 
 (use-package expand-region
   :ensure t
@@ -213,13 +208,27 @@
 (use-package rainbow-delimiters
   :ensure t
   :hook (scheme-mode . rainbow-delimiters-mode))
-
-;; Enable Racket mode and bind keys
-(use-package racket-mode
+  
+(use-package dashboard
   :ensure t
-  :mode ("\\.rkt\\'" "\\.scm\\'")
-  :bind (:map racket-mode-map
-              ("C-c C-k" . racket-run))
   :config
-  (add-hook 'racket-mode-hook #'paredit-mode)
-  (add-hook 'racket-mode-hook #'rainbow-delimiters-mode))
+  (dashboard-setup-startup-hook)
+
+    ;; Customize dashboard components order
+  (setq dashboard-startupify-list '(dashboard-insert-banner         ;; Optional banner
+                                    dashboard-insert-newline
+                                    dashboard-insert-items           ;; Recent Files, Bookmarks, etc.
+                                    dashboard-insert-newline
+                                    dashboard-insert-init-info       ;; Package info at the bottom
+                                    dashboard-insert-newline))       ;; Newline at the bottom
+  
+  ;; Customize dashboard
+  (setq dashboard-banner-logo-title nil)
+  (setq dashboard-startup-banner "~/.emacs.d/themes/emacs_logo")  ;; Remove the banner
+  (setq dashboard-center-content t)    ;; Center the content
+  ;; vertically center content
+  (setq dashboard-vertically-center-content t)
+  (setq dashboard-items '((recents  . 5)))  ;; Only display Recent Files
+  (setq dashboard-set-footer nil)      ;; Remove the random quote
+  (setq dashboard-set-init-info t)     ;; Show packages loaded info at the bottom
+)
