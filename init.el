@@ -1,6 +1,9 @@
 ;; Initialize package sources
 (require 'package)
 
+;; Maximize window
+(add-to-list 'default-frame-alist '(fullscreen . maximized))
+
 ;; Remap Meta to Option key
 (setq mac-option-modifier 'meta)       ; Make the Option key act as Meta
 ;; (setq mac-command-modifier 'super)     ; Make the Command key act as Super
@@ -19,14 +22,26 @@
 (require 'use-package)
 (setq use-package-always-ensure t)
 
+;; Move ~filename and #filename# files to a separate director
+(setq backup-directory-alist `(("." . "~/.emacs.d/backups"))) ; Store backups in ~/.emacs.d/backups/
+(setq auto-save-file-name-transforms `((".*" "~/.emacs.d/auto-save-list/" t))) ; Store auto-saves in a separate directory
+
+;;Don't create .#filename files
+(setq create-lockfiles nil)
+
 ;; helps to initialize environment variables
 (when (memq window-system '(mac ns x))
   (exec-path-from-shell-initialize)
-  (exec-path-from-shell-copy-env "GOROOT"))
+  (exec-path-from-shell-copy-env "GOROOT")
+  (exec-path-from-shell-copy-env "GOPATH")
+  (exec-path-from-shell-copy-env "GOBIN"))
 
 ;; Theme-folder
 (add-to-list 'custom-theme-load-path (expand-file-name "~/.emacs.d/themes/"))
-
+;;(use-package orangey-bits-theme)
+;;(load-theme 'orangey-bits t)
+(use-package idea-darkula-theme)
+(load-theme 'idea-darkula t)
 ;; Paste new line below the current line
 (defun paste-new-line-below ()
   "Insert a new line below the current line and move the cursor to it."
@@ -34,11 +49,11 @@
   (save-excursion
     (end-of-line)
     (newline))
-  (next-line 1))
+  (forward-line 1))
 (global-set-key (kbd "C-c O") 'paste-new-line-below)
 
  ;; Jump to a line with 'C-c l'
-(global-set-key (kbd "C-c l") 'goto-line) 
+(global-set-key (kbd "C-c l") 'goto-line)
 
 ;; startup message
 (setq inhibit-startup-message t
@@ -84,7 +99,7 @@
 ;; set font size
 ;; Height values in 1/10pt, so 100 will give you 10pt, etc.
 (set-face-attribute 'default nil
-                    :font "IBM Plex Mono"
+                    :font "Jetbrains Mono"
                     :height 160)
 
 (use-package expand-region
@@ -191,13 +206,7 @@
 (setq scroll-step 1)  ; Scroll by 1 line at a time
 (setq scroll-conservatively 10000)  ; Prevent recenters while scrolling
 
-;; Geiser with Racket support
-(use-package geiser
-  :ensure t
-  :init
-  (setq geiser-active-implementations '(racket))
-  :config
-  (add-hook 'geiser-repl-mode-hook #'paredit-mode))
+
 
 ;; Paredit for parentheses management
 (use-package paredit
@@ -232,3 +241,58 @@
   (setq dashboard-set-footer nil)      ;; Remove the random quote
   (setq dashboard-set-init-info t)     ;; Show packages loaded info at the bottom
 )
+
+
+;; LSP support
+(use-package lsp-mode
+  :hook (go-mode . lsp-deferred)
+  :config
+  (setq lsp-prefer-flymake nil)) ;; Ensures Flycheck is used over Flymake
+;; Ensure yasnippet is enabled in buffers where company is active
+
+
+
+
+
+
+
+
+
+
+(use-package yasnippet
+  :ensure t
+  :init
+  (yas-global-mode 1)) ; Enable yasnippet globally
+
+(use-package company
+  :ensure t
+  :config
+  ;; Enable company-mode in every programming-related buffer
+  (global-company-mode 1)
+  ;; Ensure yasnippet is enabled within company-mode
+  (add-hook 'company-mode-hook #'yas-minor-mode))
+
+;; Flycheck setup to rely on LSP
+(use-package flycheck
+  :init (global-flycheck-mode))
+
+;; Golang setup with LSP, company, and yasnippet
+(use-package go-mode
+  :hook ((go-mode . lsp-deferred)
+         (go-mode . subword-mode)
+         (before-save . gofmt-before-save))
+  :config
+  (setq tab-width 4)
+  ;; Ensure yasnippet works with company in go-mode buffers
+  (add-hook 'go-mode-hook
+            (lambda ()
+              (setq-local company-backends
+                          '((company-capf :with company-yasnippet))))))
+
+;; Geiser with Racket support
+(use-package geiser
+  :ensure t
+  :init
+  (setq geiser-active-implementations '(racket))
+  :config
+  (add-hook 'geiser-repl-mode-hook #'paredit-mode))
