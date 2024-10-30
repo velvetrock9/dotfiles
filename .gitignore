@@ -1,3 +1,4 @@
-/*
-/*/
-!init.el
+!emacs/
+!tmux/
+!vim/
+!zsh/
