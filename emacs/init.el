@@ -38,10 +38,11 @@
 
 ;; Theme-folder
 (add-to-list 'custom-theme-load-path (expand-file-name "~/.emacs.d/themes/"))
-;;(use-package orangey-bits-theme)
-;;(load-theme 'orangey-bits t)
-(use-package idea-darkula-theme)
-(load-theme 'idea-darkula t)
+
+;; Theme
+
+(load-theme 'vt220-orange t)
+
 ;; Paste new line below the current line
 (defun paste-new-line-below ()
   "Insert a new line below the current line and move the cursor to it."
@@ -71,8 +72,9 @@
 ;; blinking cursor
 (blink-cursor-mode t)
 
+
 ;; Highlight active line
-(hl-line-mode -1)
+(hl-line-mode t)
 
 ;; Recent files opening
 (recentf-mode 1)
@@ -99,8 +101,33 @@
 ;; set font size
 ;; Height values in 1/10pt, so 100 will give you 10pt, etc.
 (set-face-attribute 'default nil
-                    :font "Jetbrains Mono"
-                    :height 160)
+                    :font "IBM Plex Mono"
+                    :height 170)
+
+(use-package evil
+    :ensure t
+    :init
+    (setq evil-want-integration t) ;; This is optional since it's already set to t by default.
+    (setq evil-want-keybinding nil)
+    (setq evil-want-C-u-scroll t)
+    :config
+    (evil-mode 1)
+    (when evil-want-C-u-scroll
+      (define-key evil-insert-state-map (kbd "C-u") 'evil-scroll-up)
+      (define-key evil-normal-state-map (kbd "C-u") 'evil-scroll-up)
+      (define-key evil-visual-state-map (kbd "C-u") 'evil-scroll-up)
+      (define-key evil-motion-state-map (kbd "C-u") 'evil-scroll-up)))
+
+(use-package evil-collection
+  :after evil
+  :ensure t
+  :config
+  (evil-collection-init))
+
+(use-package evil-surround
+  :ensure t
+  :config
+  (global-evil-surround-mode 1))
 
 (use-package expand-region
   :ensure t
@@ -110,19 +137,32 @@
 (use-package nerd-icons)
 
 ;; use doom-emacs mod-line
-(use-package doom-modeline
-	     :ensure t
-	     :init (doom-modeline-mode 1)
-	     :custom ((doom-modeline-height 15)))
-
+;; (use-package doom-modeline
+;; 	     :ensure t
+;; 	     :init (doom-modeline-mode 1)
+;; 	     :custom
+;; 	     (doom-modeline-height 25))
+;; ;; (set-face-attribute 'mode-line nil
+;;                     :background "#f08c34" ;; Match your theme's background
+;;                     :foreground "#291405" ;; Match your theme's foreground
+;;                     :box nil)
+;; (set-face-attribute 'mode-line-inactive nil
+;;                     :background "#1e1e1e"
+;;                     :box nil)
+;;                     :foreground "#888888"
 
 ;; disable line numbers in some modes
 (dolist (mode '(org-mode-hook
 		shell-mode-hook
-		term-mode-hook))
+		term-mode-hook
+		dashboard-mode))
   (add-hook mode (lambda () (display-line-numbers-mode 0))))
 
-		
+;; Welcome message (optional)
+(let ((inhibit-message t))
+  (message "Welcome to Quake Emacs")
+  (message (format "Initialization time: %s" (emacs-init-time))))
+
 ;; rebind keys to switch between current window frames
 (global-set-key (kbd "M-o") 'other-window)
 
@@ -197,17 +237,6 @@
 (define-key completion-in-region-mode-map (kbd "C-n") 'minibuffer-next-completion)
 (define-key completion-in-region-mode-map (kbd "C-p") 'minibuffer-previous-completion)
 
-(use-package marginalia)
-(marginalia-mode t)
-
-(use-package orderless)
-(setq completion-styles '(orderless))
-
-(setq scroll-step 1)  ; Scroll by 1 line at a time
-(setq scroll-conservatively 10000)  ; Prevent recenters while scrolling
-
-
-
 ;; Paredit for parentheses management
 (use-package paredit
   :ensure t
@@ -224,7 +253,8 @@
   (dashboard-setup-startup-hook)
 
     ;; Customize dashboard components order
-  (setq dashboard-startupify-list '(dashboard-insert-banner         ;; Optional banner
+  (setq dashboard-startupify-list '(
+				    dashboard-insert-banner
                                     dashboard-insert-newline
                                     dashboard-insert-items           ;; Recent Files, Bookmarks, etc.
                                     dashboard-insert-newline
@@ -232,29 +262,17 @@
                                     dashboard-insert-newline))       ;; Newline at the bottom
   
   ;; Customize dashboard
-  (setq dashboard-banner-logo-title nil)
-  (setq dashboard-startup-banner "~/.emacs.d/themes/emacs_logo")  ;; Remove the banner
+  (setq dashboard-banner-logo-title "vt220")
+  (setq dashboard-startup-banner "~/.emacs.d/goffman.png")  ;; Remove the banner
   (setq dashboard-center-content t)    ;; Center the content
   ;; vertically center content
   (setq dashboard-vertically-center-content t)
-  (setq dashboard-items '((recents  . 5)))  ;; Only display Recent Files
+  (setq dashboard-items '((recents  . 5)
+			  (projects . 5)))  ;; Only display Recent Files
   (setq dashboard-set-footer nil)      ;; Remove the random quote
   (setq dashboard-set-init-info t)     ;; Show packages loaded info at the bottom
+  (setq dashboard-projects-backend 'projectile)
 )
-
-
-;; LSP support
-(use-package lsp-mode
-  :hook (go-mode . lsp-deferred)
-  :config
-  (setq lsp-prefer-flymake nil)) ;; Ensures Flycheck is used over Flymake
-;; Ensure yasnippet is enabled in buffers where company is active
-
-
-
-
-
-
 
 
 
@@ -264,30 +282,104 @@
   :init
   (yas-global-mode 1)) ; Enable yasnippet globally
 
-(use-package company
+
+
+;; Add extensions
+(use-package cape
+  :bind (("C-c c p" . completion-at-point)
+         ("C-c c d" . cape-dabbrev)
+         ("C-c c f" . cape-file)
+         ("C-c c k" . cape-keyword))
+  :init
+  (setq completion-at-point-functions
+        (list #'lsp-completion-at-point
+              #'cape-dabbrev
+              #'cape-file
+              #'cape-keyword))
+  (global-corfu-mode)) ;; Ensure Corfu is globally enabled
+
+(use-package marginalia)
+(marginalia-mode t)
+
+(use-package orderless
+  :init
+  ;; Tune the global completion style settings to your liking!
+  ;; This affects the minibuffer and non-lsp completion at point.
+  (setq completion-styles '(orderless partial-completion basic)
+        completion-category-defaults nil
+        completion-category-overrides nil))
+
+;; Enable Corfu completion UI
+;; See the Corfu README for more configuration tips.
+(use-package corfu
+  ;; Optional customizations
+  :custom
+  (corfu-auto t)
+  (corfu-auto-prefix 1)          ;; Minimum prefix length for auto-popup
+  (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
+  (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
+  (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
+  ;; (corfu-preview-current nil)    ;; Disable current candidate preview
+  (corfu-preselect 'prompt)      ;; Preselect the prompt
+  ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
+  :bind (:map corfu-map
+              ("TAB" . corfu-next) ;; Next item
+              ("<backtab>" . corfu-previous) ;; Previous item
+              ("<down>" . corfu-next) ;; Arrow key support
+              ("<up>" . corfu-previous) ;; Arrow key support
+              ("<mouse-4>" . corfu-scroll-up)    ;; Scroll up
+	      ("<mouse-5>" . corfu-scroll-down)) ;; Scroll down
+  ;; Enable Corfu only for certain modes. See also `global-corfu-modes'.
+  ;; :hook ((prog-mode . corfu-mode)
+  ;;        (shell-mode . corfu-mode)
+  ;;        (eshell-mode . corfu-mode))
+
+  ;; Recommended: Enable Corfu globally.  This is recommended since Dabbrev can
+  ;; be used globally (M-/).  See also the customization variable
+  ;; `global-corfu-modes' to exclude certain modes.
+  :init
+  (global-corfu-mode))
+use-file-dialog
+(setq scroll-step 1)  ; Scroll by 1 line at a time
+(setq scroll-conservatively 10000)  ; Prevent recenters while scrolling
+
+(use-package which-key
   :ensure t
   :config
-  ;; Enable company-mode in every programming-related buffer
-  (global-company-mode 1)
-  ;; Ensure yasnippet is enabled within company-mode
-  (add-hook 'company-mode-hook #'yas-minor-mode))
+  (which-key-mode))
+
+;; LSP support
+(use-package lsp-mode
+  :ensure t
+  :hook ((go-mode		.	lsp-deferred))
+  :bind (:map lsp-mode-map
+	      ("C-c d"		.	lsp-describe-thing-at-point)
+	      ("C-c a"		.	lsp-execute-code-action)
+	      ("C-c f"		.	flycheck-list-errors))
+  :config
+  ;;go
+  (require 'lsp-go)
+  (setq lsp-go-analyses
+	'((fieldalignment	.	t)
+	    (nilness		.	t)
+	    (unusedwrite	.	t)
+	    (unusedparams	.	t)))
+  (setq gofmt-command "goimports")
+
+  ;; general
+  (define-key lsp-mode-map (kbd "C-c l") 'lsp-command-map)
+  (lsp-enable-which-key-integration t)
+  (setq lsp-enable-links nil
+	lsp-keep-workspace-alive nil
+	lsp-signature-doc-lines 2
+	lsp-enable-snippet nil)
+(setq lsp-completion-provider :none))
+	 
+	 
 
 ;; Flycheck setup to rely on LSP
 (use-package flycheck
   :init (global-flycheck-mode))
-
-;; Golang setup with LSP, company, and yasnippet
-(use-package go-mode
-  :hook ((go-mode . lsp-deferred)
-         (go-mode . subword-mode)
-         (before-save . gofmt-before-save))
-  :config
-  (setq tab-width 4)
-  ;; Ensure yasnippet works with company in go-mode buffers
-  (add-hook 'go-mode-hook
-            (lambda ()
-              (setq-local company-backends
-                          '((company-capf :with company-yasnippet))))))
 
 ;; Geiser with Racket support
 (use-package geiser
@@ -296,3 +388,85 @@
   (setq geiser-active-implementations '(racket))
   :config
   (add-hook 'geiser-repl-mode-hook #'paredit-mode))
+
+(defalias 'list-buffers 'ibuffer) ; make ibuffer default
+
+(global-set-key (kbd "<pinch>") 'ignore)
+(global-set-key (kbd "<C-wheel-up>") 'ignore)
+(global-set-key (kbd "<C-wheel-down>") 'ignore)
+
+;; Bookmarks
+(use-package bm
+         :ensure t
+         :demand t
+
+         :init
+         ;; restore on load (even before you require bm)
+         (setq bm-restore-repository-on-load t)
+
+
+         :config
+         ;; Allow cross-buffer 'next'
+         (setq bm-cycle-all-buffers t)
+
+         ;; where to store persistant files
+         (setq bm-repository-file "~/.emacs.d/bm-repository")
+
+         ;; save bookmarks
+         (setq-default bm-buffer-persistence t)
+
+         ;; Loading the repository from file when on start up.
+         (add-hook 'after-init-hook 'bm-repository-load)
+
+         ;; Saving bookmarks
+         (add-hook 'kill-buffer-hook #'bm-buffer-save)
+
+         ;; Saving the repository to file when on exit.
+         ;; kill-buffer-hook is not called when Emacs is killed, so we
+         ;; must save all bookmarks first.
+         (add-hook 'kill-emacs-hook #'(lambda nil
+                                          (bm-buffer-save-all)
+                                          (bm-repository-save)))
+
+         ;; The `after-save-hook' is not necessary to use to achieve persistence,
+         ;; but it makes the bookmark data in repository more in sync with the file
+         ;; state.
+         (add-hook 'after-save-hook #'bm-buffer-save)
+
+         ;; Restoring bookmarks
+         (add-hook 'find-file-hooks   #'bm-buffer-restore)
+         (add-hook 'after-revert-hook #'bm-buffer-restore)
+
+         ;; The `after-revert-hook' is not necessary to use to achieve persistence,
+         ;; but it makes the bookmark data in repository more in sync with the file
+         ;; state. This hook might cause trouble when using packages
+         ;; that automatically reverts the buffer (like vc after a check-in).
+         ;; This can easily be avoided if the package provides a hook that is
+         ;; called before the buffer is reverted (like `vc-before-checkin-hook').
+         ;; Then new bookmarks can be saved before the buffer is reverted.
+         ;; Make sure bookmarks is saved before check-in (and revert-buffer)
+         (add-hook 'vc-before-checkin-hook #'bm-buffer-save)
+
+
+         :bind (("C-c m n" . bm-next)
+                ("C-c m p" . bm-previous)
+                ("C-c m a" . bm-toggle))
+)
+(use-package projectile)
+(projectile-mode +1)
+;; Recommended keymap prefix on macOS
+(define-key projectile-mode-map (kbd "s-p") 'projectile-command-map)
+;; Recommended keymap prefix on Windows/Linux
+(define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
+(setq projectile-project-search-path '("~/Sandbox/"))
+
+(use-package lsp-ui
+  :ensure t
+  :config
+  (setq lsp-ui-doc-show-with-cursor nil)
+  ;; Disable automatic hover popup
+  (setq lsp-ui-doc-show-with-mouse nil)
+  (setq lsp-ui-doc-border "black")
+  (setq lsp-ui-doc-position 'at-point))
+(global-set-key (kbd "C-c h") 'lsp-ui-doc-toggle)
+;; (setq lsp-log-io t)
