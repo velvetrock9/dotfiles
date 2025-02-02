@@ -53,9 +53,6 @@
   (forward-line 1))
 (global-set-key (kbd "C-c O") 'paste-new-line-below)
 
- ;; Jump to a line with 'C-c l'
-(global-set-key (kbd "C-c l") 'goto-line)
-
 ;; startup message
 (setq inhibit-startup-message t
       visible-bell t)
@@ -135,21 +132,46 @@
 
 ;; nerd icons
 (use-package nerd-icons)
+;; Enable vertico
+(use-package vertico
+  :custom
+  (vertico-scroll-margin 0) ;; Different scroll margin
+  (vertico-count 10) ;; Show more candidates
+  (vertico-resize t) ;; Grow and shrink the Vertico minibuffer
+  (vertico-cycle t) ;; Enable cycling for `vertico-next/previous'
+  :init
+  (vertico-mode))
 
-;; use doom-emacs mod-line
-;; (use-package doom-modeline
-;; 	     :ensure t
-;; 	     :init (doom-modeline-mode 1)
-;; 	     :custom
-;; 	     (doom-modeline-height 25))
-;; ;; (set-face-attribute 'mode-line nil
-;;                     :background "#f08c34" ;; Match your theme's background
-;;                     :foreground "#291405" ;; Match your theme's foreground
-;;                     :box nil)
-;; (set-face-attribute 'mode-line-inactive nil
-;;                     :background "#1e1e1e"
-;;                     :box nil)
-;;                     :foreground "#888888"
+;; Persist history over Emacs restarts. Vertico sorts by history position.
+(use-package savehist
+  :init
+  (savehist-mode))
+
+;; A few more useful configurations...
+(use-package emacs
+  :custom
+  ;; Support opening new minibuffers from inside existing minibuffers.
+  (enable-recursive-minibuffers t)
+  ;; Hide commands in M-x which do not work in the current mode.  Vertico
+  ;; commands are hidden in normal buffers. This setting is useful beyond
+  ;; Vertico.
+  (read-extended-command-predicate #'command-completion-default-include-p)
+  :init
+  ;; Add prompt indicator to `completing-read-multiple'.
+  ;; We display [CRM<separator>], e.g., [CRM,] if the separator is a comma.
+  (defun crm-indicator (args)
+    (cons (format "[CRM%s] %s"
+                  (replace-regexp-in-string
+                   "\\`\\[.*?]\\*\\|\\[.*?]\\*\\'" ""
+                   crm-separator)
+                  (car args))
+          (cdr args)))
+  (advice-add #'completing-read-multiple :filter-args #'crm-indicator)
+
+  ;; Do not allow the cursor in the minibuffer prompt
+  (setq minibuffer-prompt-properties
+        '(read-only t cursor-intangible t face minibuffer-prompt))
+  (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode))
 
 ;; disable line numbers in some modes
 (dolist (mode '(org-mode-hook
@@ -295,8 +317,7 @@
         (list #'lsp-completion-at-point
               #'cape-dabbrev
               #'cape-file
-              #'cape-keyword))
-  (global-corfu-mode)) ;; Ensure Corfu is globally enabled
+              #'cape-keyword))) 
 
 (use-package marginalia)
 (marginalia-mode t)
@@ -319,9 +340,7 @@
   (corfu-cycle t)                ;; Enable cycling for `corfu-next/previous'
   (corfu-quit-at-boundary nil)   ;; Never quit at completion boundary
   (corfu-quit-no-match nil)      ;; Never quit, even if there is no match
-  ;; (corfu-preview-current nil)    ;; Disable current candidate preview
   (corfu-preselect 'prompt)      ;; Preselect the prompt
-  ;; (corfu-on-exact-match nil)     ;; Configure handling of exact matches
   :bind (:map corfu-map
               ("TAB" . corfu-next) ;; Next item
               ("<backtab>" . corfu-previous) ;; Previous item
@@ -339,7 +358,7 @@
   ;; `global-corfu-modes' to exclude certain modes.
   :init
   (global-corfu-mode))
-use-file-dialog
+
 (setq scroll-step 1)  ; Scroll by 1 line at a time
 (setq scroll-conservatively 10000)  ; Prevent recenters while scrolling
 
@@ -348,24 +367,55 @@ use-file-dialog
   :config
   (which-key-mode))
 
+(use-package rustic
+  :ensure t
+  :bind (:map rustic-mode-map
+              ("M-j" . lsp-ui-imenu)
+              ("M-?" . lsp-find-references)
+              ("C-c C-c l" . flycheck-list-errors)
+              ("C-c C-c a" . lsp-execute-code-action)
+              ("C-c C-c r" . lsp-rename)
+              ("C-c C-c q" . lsp-workspace-restart)
+              ("C-c C-c Q" . lsp-workspace-shutdown)
+              ("C-c C-c s" . lsp-rust-analyzer-status))
+  :config
+  (setq rustic-format-on-save t)
+  (add-hook 'rustic-mode-hook 'rk/rustic-mode-hook))
+
+(defun rk/rustic-mode-hook ()
+  ;; so that run C-c C-c C-r works without having to confirm, but don't try to
+  ;; save rust buffers that are not file visiting. Once
+  ;; https://github.com/brotzeit/rustic/issues/253 has been resolved this should
+  ;; no longer be necessary.
+  (when buffer-file-name
+    (setq-local buffer-save-without-query t))
+  (add-hook 'before-save-hook 'lsp-format-buffer nil t))
+
 ;; LSP support
 (use-package lsp-mode
   :ensure t
+  :commands lsp
   :hook ((go-mode		.	lsp-deferred))
   :bind (:map lsp-mode-map
 	      ("C-c d"		.	lsp-describe-thing-at-point)
 	      ("C-c a"		.	lsp-execute-code-action)
 	      ("C-c f"		.	flycheck-list-errors))
+  :custom
+    ;; what to use when checking on-save. "check" is default, I prefer clippy
+  (lsp-rust-analyzer-cargo-watch-command "clippy")
+  (lsp-eldoc-render-all t)
+  (lsp-idle-delay 0.6)
+  ;; enable / disable the hints as you prefer:
+  (lsp-inlay-hint-enable t)
+  ;; These are optional configurations. See https://emacs-lsp.github.io/lsp-mode/page/lsp-rust-analyzer/#lsp-rust-analyzer-display-chaining-hints for a full list
+  (lsp-rust-analyzer-display-lifetime-elision-hints-enable "skip_trivial")
+  (lsp-rust-analyzer-display-chaining-hints t)
+  (lsp-rust-analyzer-display-lifetime-elision-hints-use-parameter-names nil)
+  (lsp-rust-analyzer-display-closure-return-type-hints t)
+  (lsp-rust-analyzer-display-parameter-hints nil)
+  (lsp-rust-analyzer-display-reborrow-hints nil)
   :config
-  ;;go
-  (require 'lsp-go)
-  (setq lsp-go-analyses
-	'((fieldalignment	.	t)
-	    (nilness		.	t)
-	    (unusedwrite	.	t)
-	    (unusedparams	.	t)))
-  (setq gofmt-command "goimports")
-
+  (add-hook 'lsp-mode-hook 'lsp-ui-mode)
   ;; general
   (define-key lsp-mode-map (kbd "C-c l") 'lsp-command-map)
   (lsp-enable-which-key-integration t)
@@ -375,7 +425,13 @@ use-file-dialog
 	lsp-enable-snippet nil)
 (setq lsp-completion-provider :none))
 	 
-	 
+(use-package lsp-ui
+  :ensure
+  :commands lsp-ui-mode
+  :custom
+  (lsp-ui-peek-always-show t)
+  (lsp-ui-sideline-show-hover t)
+  (lsp-ui-doc-enable nil))	 
 
 ;; Flycheck setup to rely on LSP
 (use-package flycheck
@@ -414,7 +470,6 @@ use-file-dialog
 
          ;; save bookmarks
          (setq-default bm-buffer-persistence t)
-
          ;; Loading the repository from file when on start up.
          (add-hook 'after-init-hook 'bm-repository-load)
 
@@ -460,13 +515,48 @@ use-file-dialog
 (define-key projectile-mode-map (kbd "C-c p") 'projectile-command-map)
 (setq projectile-project-search-path '("~/Sandbox/"))
 
-(use-package lsp-ui
-  :ensure t
-  :config
-  (setq lsp-ui-doc-show-with-cursor nil)
-  ;; Disable automatic hover popup
-  (setq lsp-ui-doc-show-with-mouse nil)
-  (setq lsp-ui-doc-border "black")
-  (setq lsp-ui-doc-position 'at-point))
-(global-set-key (kbd "C-c h") 'lsp-ui-doc-toggle)
-;; (setq lsp-log-io t)
+
+(use-package multi-vterm
+	:config
+	(add-hook 'vterm-mode-hook
+			(lambda ()
+			(setq-local evil-insert-state-cursor 'box)
+			(evil-insert-state)))
+	(define-key vterm-mode-map [return]                      #'vterm-send-return)
+
+	(setq vterm-keymap-exceptions nil)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-e")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-f")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-a")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-v")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-b")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-w")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-u")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-d")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-n")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-m")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-p")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-j")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-k")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-r")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-t")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-g")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-c")      #'vterm--self-insert)
+	(evil-define-key 'insert vterm-mode-map (kbd "C-SPC")    #'vterm--self-insert)
+	(evil-define-key 'normal vterm-mode-map (kbd "C-d")      #'vterm--self-insert)
+	(evil-define-key 'normal vterm-mode-map (kbd ",c")       #'multi-vterm)
+	(evil-define-key 'normal vterm-mode-map (kbd ",n")       #'multi-vterm-next)
+	(evil-define-key 'normal vterm-mode-map (kbd ",p")       #'multi-vterm-prev)
+	(evil-define-key 'normal vterm-mode-map (kbd "i")        #'evil-insert-resume)
+	(evil-define-key 'normal vterm-mode-map (kbd "o")        #'evil-insert-resume)
+	(evil-define-key 'normal vterm-mode-map (kbd "<return>") #'evil-insert-resume))
+
+(global-set-key (kbd "C-c o v") 'multi-vterm)
+(global-set-key (kbd "C-c e b") 'eval-buffer)
+
+(use-package org
+  :demand t
+  :config 
+  (global-set-key (kbd "C-c t s") 'org-timer-set-timer)
+  (global-set-key (kbd "C-c t p") 'org-timer-pause-or-continue)
+  (setq org-clock-sound "~/Music/orgtimer.wav"))
