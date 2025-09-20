@@ -236,6 +236,23 @@
   :custom (lsp-completion-provider :none)
   :hook ((go-mode . lsp-deferred)))
 
+;;; Language: Python  ───────────────────────────────────────────
+(use-package lsp-pyright
+  :after lsp-mode                              ; load after lsp-mode is ready
+  :hook ((python-mode python-ts-mode) . (lambda ()
+                                          ;; Tell lsp which Python to use:
+                                          (setq-local lsp-pyright-python-executable-cmd
+                                                      (or (executable-find "python3")
+                                                          (executable-find "python")))
+                                          ;; Pick up venvs created with pyenv, asdf, poetry, etc.
+                                          (setq-local lsp-pyright-venv-directory
+                                                      (expand-file-name "~/.virtualenvs"))
+                                          (lsp-deferred)))           ; start LSP gently
+  :config
+  ;; Optional tweaks:
+  (setq lsp-pyright-typechecking-mode "basic"  ; or "strict", "off"
+        lsp-pyright-disable-organize-imports nil))
+
 (use-package lsp-ui
   :after lsp-mode
   :commands lsp-ui-mode
@@ -538,7 +555,7 @@
   :init
   (golden-ratio-mode 1))
 
-
+(use-package treemacs)
 ;;
 ;;(use-package kubernetes
 ;;  :ensure t
